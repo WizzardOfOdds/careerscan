@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Career Scan</title>
+<meta name="description" content="An AI interview that maps you to employers, including ones outside the industries you'd think of.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+</script>
+<style>
+  :root {
+    --bg: #0e1526; --bg2: #141d33; --card: #18223c; --line: #25314f;
+    --text: #e8ecf6; --muted: #8b97b4; --blue: #3b6fd6; --blue2: #5b8bef;
+    --accent: #c8613f; --accent2: #d9754f; --ok: #9fe0bf; --warn: #f0b090;
+    --radius: 14px; --maxw: 780px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--bg); color: var(--text); line-height: 1.5;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 26px 16px 160px; }
+  header.top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, var(--blue), var(--accent)); }
+  .brand { flex: 1; font-weight: 700; }
+  .brand small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .sub { color: var(--muted); margin: 12px 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin-bottom: 10px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 5px; text-transform: uppercase; letter-spacing: .5px; }
+  input[type=text], input[type=password], textarea, select {
+    width: 100%; background: var(--bg2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 14px;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--blue2); }
+  textarea { resize: vertical; min-height: 80px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .check { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font-size: 13px; }
+  button { font: inherit; cursor: pointer; border: none; border-radius: 10px; }
+  .primary { background: var(--accent); color: #fff; font-weight: 600; padding: 13px 20px; width: 100%; margin-top: 18px; }
+  .primary:hover { background: var(--accent2); }
+  .ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); padding: 9px 15px; }
+  .ghost:hover { border-color: var(--blue2); color: var(--text); }
+  .link { background: none; color: var(--blue2); text-decoration: underline; font-size: 12px; margin-left: 8px; }
+  .demo { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  #files { list-style: none; margin: 8px 0; font-size: 13px; color: var(--ok); }
+  .upload { display: inline-block; background: var(--bg2); border: 1px solid var(--line); padding: 9px 14px; border-radius: 10px; font-size: 13px; cursor: pointer; text-transform: none; letter-spacing: 0; color: var(--text); }
+  .upload:hover { border-color: var(--blue2); }
+  .err { background: #3a1e1e; border: 1px solid #6e2b2b; color: #f0b0b0; padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-top: 12px; }
+
+  #progress { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  #msgs { display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 86%; padding: 12px 15px; border-radius: 14px; white-space: pre-wrap; }
+  .msg.ai { background: var(--card); border: 1px solid var(--line); align-self: flex-start; }
+  .msg.me { background: var(--blue); color: #fff; align-self: flex-end; }
+  #typing { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 10px; }
+  #composer { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(0deg, var(--bg) 70%, transparent); }
+  #composer .inner { max-width: var(--maxw); margin: 0 auto; display: flex; gap: 10px; }
+  #composer textarea { min-height: 50px; height: 50px; }
+  #composer button { background: var(--accent); color: #fff; padding: 0 20px; font-weight: 600; }
+
+  #processing { text-align: center; padding: 60px 0; }
+  .spinner { width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--accent); margin: 0 auto 20px; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #procStatus { color: var(--muted); }
+
+  .banner { font-size: 13px; color: var(--warn); margin-bottom: 14px; }
+  .banner.ok { color: var(--ok); }
+  .profile-box { background: linear-gradient(135deg, #182a4a, #182142); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 22px; }
+  .pitch { margin-top: 10px; color: var(--warn); }
+  .bucket { margin-bottom: 24px; }
+  .chip { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; }
+  .obvious .chip { background: #22406e; color: #a9c6ff; }
+  .adjacent .chip { background: #2b4a3f; color: #9fe0bf; }
+  .unexpected .chip { background: #5a3222; color: #f0b090; }
+  .blurb { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .company { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .company header { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .company h3 { font-size: 15px; }
+  .company a { color: var(--blue2); text-decoration: none; }
+  .company a:hover { text-decoration: underline; }
+  .loc { font-size: 12px; color: var(--muted); }
+  .what, .why { font-size: 13px; margin-top: 5px; }
+  .why { color: #cdd6ea; }
+  .bridge { font-size: 13px; color: var(--warn); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+  .note { font-size: 13px; color: var(--muted); background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+
+  #panelToggle { position: fixed; top: 50%; right: 0; transform: translateY(-50%); writing-mode: vertical-rl;
+    background: var(--card); border: 1px solid var(--line); border-right: none; color: var(--muted);
+    padding: 12px 6px; border-radius: 9px 0 0 9px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; z-index: 60; }
+  #panel { position: fixed; top: 0; right: 0; height: 100%; width: 340px; max-width: 88vw; background: #0b1120;
+    border-left: 1px solid var(--line); z-index: 70; transform: translateX(100%); transition: transform .2s; padding: 16px; overflow: auto; }
+  #panel.open { transform: none; }
+  #panel .row { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+  #logbox { font: 11px/1.4 ui-monospace, Consolas, monospace; color: #9fb0d0; white-space: pre-wrap; word-break: break-word;
+    background: #080c16; border: 1px solid var(--line); border-radius: 8px; padding: 10px; max-height: 60vh; overflow: auto; }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    #panelToggle, #panel, #composer, .no-print, #restartBtn { display: none !important; }
+    .card, .company, .profile-box, .note { background: #fff; border-color: #bbb; color: #000; }
+    .why, .what, .blurb, .loc, .banner { color: #333; }
+    .company a { color: #000; }
+    .company { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo"></div>
+    <div class="brand">Career Scan <small>fit discovery · prototype</small></div>
+    <button type="button" class="ghost" id="restartBtn" hidden>Start over</button>
+  </header>
+
+  <section id="setup">
+    <p class="sub">Upload your CV and have a short interview. You get a list of employers that fit you,
+      including some in industries you wouldn't have searched. About 15 minutes.</p>
+
+    <div class="card demo">
+      <div><h2>No API key?</h2><p class="hint">Walk through a sample interview and scan for a fictional candidate.</p></div>
+      <button type="button" class="ghost" id="demoBtn">See a sample scan</button>
+    </div>
+
+    <form id="setupForm" autocomplete="off">
+      <div class="card">
+        <h2>1 · Your Anthropic API key</h2>
+        <label for="apiKey">API key</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-...">
+        <label class="check"><input type="checkbox" id="rememberKey"> Remember on this device</label>
+        <p class="hint">The key is only sent to api.anthropic.com. It's kept for this tab only unless you tick the box.
+          Rough estimate: about $1 per full scan on Opus 5, less on the smaller models.</p>
+        <label for="model">Model</label>
+        <select id="model">
+          <option value="claude-opus-5">Claude Opus 5 (best results)</option>
+          <option value="claude-sonnet-5">Claude Sonnet 5 (cheaper)</option>
+          <option value="claude-haiku-4-5">Claude Haiku 4.5 (cheapest)</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <h2>2 · The basics</h2>
+        <p class="hint">Optional, but every field here is one question fewer in the interview.</p>
+        <div class="grid2">
+          <div><label for="studies">Studies</label><input type="text" id="studies" name="studies" placeholder="M.Sc. Mechanical Engineering"></div>
+          <div><label for="graduation">Graduating</label><input type="text" id="graduation" name="graduation" placeholder="Spring 2027"></div>
+          <div><label for="location">Based in / open to</label><input type="text" id="location" name="location" placeholder="Munich; open to EU"></div>
+          <div><label for="languages">Languages</label><input type="text" id="languages" name="languages" placeholder="German, English"></div>
+          <div><label for="sectors">Sectors you're drawn to</label><input type="text" id="sectors" name="sectors" placeholder="automotive, energy"></div>
+          <div><label for="hardNos">Hard no's</label><input type="text" id="hardNos" name="hardNos" placeholder="constant travel"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3 · Your documents</h2>
+        <label class="upload" for="cvFile">+ Add CV (PDF or text, up to 5 files)</label>
+        <input type="file" id="cvFile" accept="application/pdf,.txt" multiple hidden>
+        <ul id="files"></ul>
+        <label for="notes">Anything to add?</label>
+        <textarea id="notes" placeholder="A few lines about you, or context for your documents"></textarea>
+        <button type="submit" class="primary">Start the interview →</button>
+        <div id="setupErr"></div>
+      </div>
+    </form>
+  </section>
+
+  <section id="chat" hidden>
+    <p id="progress">Interview</p>
+    <div id="msgs"></div>
+    <p id="typing" hidden>thinking…</p>
+  </section>
+
+  <section id="processing" hidden>
+    <div class="spinner"></div>
+    <h2>Building your scan</h2>
+    <p id="procStatus"></p>
+    <p class="hint">Two web searches run in parallel. This takes one to three minutes.</p>
+  </section>
+
+  <section id="results" hidden></section>
+</div>
+
+<div id="composer" hidden>
+  <div class="inner">
+    <textarea id="answer" placeholder="Type your answer… (Enter to send, Shift+Enter for a new line)"></textarea>
+    <button type="button" id="sendBtn">Send</button>
+  </div>
+</div>
+
+<button type="button" id="panelToggle">Panel</button>
+<aside id="panel">
+  <h2>Panel</h2>
+  <div class="row">
+    <button type="button" class="ghost" id="dlTranscript">Download transcript</button>
+    <button type="button" class="ghost" id="copyLog">Copy log</button>
+    <button type="button" class="ghost" onclick="document.getElementById('panel').classList.remove('open')">Close</button>
+  </div>
+  <div id="logbox"></div>
+</aside>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
